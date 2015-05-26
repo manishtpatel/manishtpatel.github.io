@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="https://fb.me/react-with-addons-0.13.3.js"></script>
+    <script src="https://fb.me/JSXTransformer-0.13.3.js"></script>
+  </head>
+  <body>
+    <div id="example"></div>
+    <script type="text/jsx">
+
+    var MySvg = React.createClass(
+      { 
+        getInitialState: function(){
+            return {
+              height: 210,
+              width: 297
+            };
+        },
+        componentDidMount: function(){
+          var component = this;
+          
+          setInterval(function(){
+            component.setState({height: Math.random()*1000, width: Math.random()*1000})    
+          }, 500);
+        },
+        render: function() { 
+          var myStyle = {
+            fill: '#0085cc',
+            'fillOpacity' : 1
+          };
+
+          return (
+            <svg
+               width='300'
+               height='300'
+               viewBox="0 0 744.09448819 1052.3622047"
+               id="svg2"
+               version="1.1">
+              <defs
+                 id="defs4" />
+              <g
+                 id="layer1">
+                <rect
+                   style={myStyle}
+                   id="rect3336"
+                   width={this.state.width}
+                   height={this.state.height}
+                   x="42.857143"
+                   y="40.933632" />
+              </g>
+            </svg>
+    ); } });
+
+
+
+      React.render(
+        <MySvg />
+        ,
+        document.getElementById('example')
+      );
+    </script>
+  </body>
+</html>
