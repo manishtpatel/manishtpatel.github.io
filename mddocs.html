@@ -121,7 +121,7 @@
             // save new state
             this.data = newData;
             // put data in edit textarea
-            $("#editor textarea").text(this.data);
+            $("#editor textarea").val(this.data);
             // render md on page
             $('#renderHere').html(window.md.render(this.data));
         }
@@ -184,7 +184,7 @@
         this.cancelSave = function(cancelling) {
             if (cancelling) {
                 // reset text are text
-                $("#editor textarea").text(this.data);
+                $("#editor textarea").val(this.data);
                 this.enterEditMode(false);
                 this.fragmentChanged();
             } else {
