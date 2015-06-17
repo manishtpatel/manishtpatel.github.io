@@ -1,167 +1,215 @@
 <html>
+
 <head>
     <link href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.4/css/bootstrap.min.css" type="text/css" rel="stylesheet"></link>
     <link href="//cdnjs.cloudflare.com/ajax/libs/bootswatch/3.3.4/cosmo/bootstrap.min.css" type="text/css" rel="stylesheet"></link>
-
     <style async>
-        body {
-            margin: 20px;
-        }
+    body {
+        margin: 20px;
+    }
     </style>
-
     <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
     <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/URI.js/1.15.1/URI.min.js"></script>
     <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/markdown-it/4.2.2/markdown-it.min.js"></script>
     <script src="//www.parsecdn.com/js/parse-1.4.2.min.js"></script>
-
     <script>
-        var landingURI = new URI(window.location.href);
-        var keys = landingURI.query(true);
-        var uri, filename;
+    var queryStrings = (new URI(window.location.href)).query(true);
 
-        Parse.initialize(keys["pk1"], keys["pk2"]);
-        var CareerViewDocs = Parse.Object.extend(keys["pkc"]);
-        var careerViewDocs = new CareerViewDocs();
-        var homeFragment = keys["home"];
-        var headerFragment = keys["header"];
-        var mdData;
+    // App Data
+    var props = {
+        homeDataKey: queryStrings["homedatakey"], // home data key
+        headerDataKey: queryStrings["headerdatakey"], // header data key
+        parseAppId: queryStrings["parseappid"], // your parse AppId
+        parseJavascriptKey: queryStrings["parsejavascriptkey"], // your parse Javascript Key
+        parseClass: queryStrings["parseclass"]
+    };
 
-        function getParse(key, callback) {
-            var query = new Parse.Query(CareerViewDocs);
-            query.equalTo("key", key).descending("updatedAt");
+    var parseService = function(props) {
+        // initiate parse
+        Parse.initialize(props.parseAppId, props.parseJavascriptKey);
+        var CareerViewDocs = Parse.Object.extend(props.parseClass);
 
-            query.find({
-                success: function (results) {
-                    // ignore values not found we will add new one
-                    if (results.length > 0) callback(results[0].get('value'));
-                    else callback("");
-                },
-                error: function (error) {
-                    alert("Error: " + error.code + " " + error.message);
+        return {
+            getParse: function(key, callback) {
+                var query = new Parse.Query(CareerViewDocs);
+                query.equalTo("key", key).descending("updatedAt");
+
+                query.find({
+                    success: function(results) {
+                        callback(results.length > 0, (results.length > 0) ? results[0].get('value') : null);
+                    },
+                    error: function(error) {
+                        alert("Error: " + error.code + " " + error.message);
+                    }
+                });
+            },
+            saveParse: function(key, value, callback) {
+                var careerViewDocs = new CareerViewDocs();
+
+                careerViewDocs.save({
+                    key: key,
+                    value: value
+                }).then(function(object) {
+                    callback(object);
+                });
+            }
+        };
+    };
+
+    var AppState = function(props) {
+        this.editing = false; // app in edit mode
+        this.data = "loading"; // current data
+        this.fragment = null; // current fragement
+        this.props = props; // app props
+        this.parse = parseService(this.props); // parse.com services
+
+        this.constructor = function() {
+            // init fragment on page load
+            this.fragmentChanged();
+
+            // get and render header
+            this.parse.getParse(this.props.headerDataKey, function(found, data) {
+                if (found) {
+                    $("#header").html(window.md.render(data));
                 }
             });
-        }
 
-        var saveParse = function (key, value, callback) {
-            careerViewDocs.save({ key: key, value: value }).then(function (object) {
-                callback(object);
+            $("body").on("click", "a,button", function(e) {
+                // prevent default on all links
+                e.preventDefault();
             });
+
+            // bind to link click
+            $("body").on("click", "a", this.handleLinkClick.bind(this));
+
+            // bind to edit/cancel button click
+            $("#edit").on("click", this.enterEditMode.bind(this, true));
+            $('#cancel').on('click', this.cancelSave.bind(this, true));
+            $("#save").on("click", this.cancelSave.bind(this, false));
+
+            // auto update view on textarea updates
+            $('#editor textarea').bind('input propertychange', function() {
+                $('#renderHere').html(window.md.render(this.value));
+            });
+
+            // trigger fragmentChanged on popstate
+            window.onpopstate = function() {
+                this.fragmentChanged()
+            }.bind(this);
         }
 
-        var md = window.markdownit({
+        // Data Changed handler
+        this.dataChanged = function(newData) {
+            // save new state
+            this.data = newData;
+            // put data in edit textarea
+            $("#editor textarea").text(this.data);
+            // render md on page
+            $('#renderHere').html(window.md.render(this.data));
+        }
+
+        this.fragmentChanged = function() {
+            // get fragement
+            this.fragment = (new URI(document.location.href)).fragment();
+
+            // if no fragment then either redirecting to home or landing to home
+            if (!this.fragment) this.fragment = this.props.homeDataKey;
+
+            // get value and render
+            this.parse.getParse(this.fragment, function(found, data) {
+                if (!found) {
+                    data = "# Your new page is ready, press 'edit this page'";
+                }
+
+                this.dataChanged(data);
+            }.bind(this));
+        }
+
+        this.handleLinkClick = function(e) {
+            e.stopImmediatePropagation();
+            e.preventDefault();
+
+            if (this.editing) {
+                alert("can't let you redirect while editing, " + e.target.href);
+                return;
+            }
+
+            var currentURI = new URI(window.location.href);
+            var targetURI = new URI(e.currentTarget.href);
+
+            // open outside link in another tab for all outside links
+            if (currentURI.hostname() != targetURI.hostname() || currentURI.directory() != targetURI.directory()) {
+                var win = window.open(targetURI.href(), '_blank');
+                win.focus();
+                return;
+            }
+
+            var fileNamefragment = $(e.currentTarget).attr("href");
+            currentURI.fragment(fileNamefragment);
+            history.pushState({}, "", currentURI.href());
+
+            this.fragmentChanged();
+        }
+
+        this.enterEditMode = function(entering) {
+            this.editing = entering;
+
+            if (entering) {
+                $("#editor").show();
+                $("#edit").hide();
+            } else {
+                $("#editor").hide();
+                $("#edit").show();
+            }
+        }
+
+        this.cancelSave = function(cancelling) {
+            if (cancelling) {
+                // reset text are text
+                $("#editor textarea").text(this.data);
+                this.enterEditMode(false);
+            } else {
+                // save changes
+                this.parse.saveParse(this.fragment, $("#editor textarea").val(), this.enterEditMode.bind(this, false));
+            }
+        }
+
+        this.constructor();
+    }
+
+    $(function() {
+        // initiate markdown-it
+        window.md = window.markdownit({
             html: true,
             linkify: false,
             typographer: true,
             xhtmlout: true
         });
 
-        var render = function () {
-            uri = new URI(document.location.href);
-            filename = uri.fragment();
-
-            getParse(filename, function (data) {
-                mdData = data;
-
-                $("#editor textarea").text(mdData);
-
-                $('#renderHere').html(md.render(mdData));
-            });
-        }
-
-        window.onpopstate = render;
-
-        $(function () {
-            render();
-
-            getParse(headerFragment, function (data) {
-                $("#header").html(md.render(data));
-            });
-
-            $("#renderHere").on("click", "a", function (e) {
-                e.stopImmediatePropagation();
-                e.preventDefault();
-
-                var currentURI = new URI(e.target.baseURI);
-                var targetURI = new URI(e.target.href);
-
-                // open outside link in another tab for all outside links
-                if (currentURI.hostname() != targetURI.hostname() && currentURI.directory() != targetURI.directory()) {
-                    var win = window.open(targetURI.href(), '_blank');
-                    win.focus();
-                    return;
-                }
-
-                var fileNamefragment = $(e.target).attr("href");
-
-                currentURI.fragment(fileNamefragment);
-
-                history.pushState({}, "", currentURI.href());
-
-                render();
-            });
-
-            $("#edit").on("click", function (e) {
-                e.stopImmediatePropagation();
-                e.preventDefault();
-
-                $("#editor").show();
-                $("#edit").hide();
-            });
-
-            $("#save").on("click", function (e) {
-                e.stopImmediatePropagation();
-                e.preventDefault();
-
-                saveParse(filename, $("#editor textarea").val(), function () {
-                    $("#editor").hide();
-                    $("#edit").show();
-                });
-            });
-
-            $('#editor textarea').bind('input propertychange', function () {
-                $('#renderHere').html(md.render(this.value));
-            });
-
-            $('#header').on('click', 'a', function (e) {
-                e.stopImmediatePropagation();
-                e.preventDefault();
-
-                $("#editor").hide();
-                $("#edit").show();
-
-                history.pushState({}, "", uri.fragment(homeFragment));
-
-                render();
-            });
-
-            $('#cancel').on('click', function () {
-                $("#editor").hide();
-                $("#edit").show();
-
-                $("#editor textarea").text(mdData);
-            })
-        });
+        // initiate appState
+        var appState = new AppState(props);
+    });
     </script>
 </head>
+
 <body>
     <div class="clearfix" style="margin-bottom: 10px;">
         <div id="header" class="pull-left">
         </div>
         <div class="pull-right">
-            <a id="edit" style="margin-left: 30px;" class="btn btn-info">Edit This Page</a>
+            <button type="button" id="edit" style="margin-left: 30px;" class="btn btn-info">Edit This Page</button>
         </div>
     </div>
-
-
-    <div style="display: none;" id="editor">
+    <div style="display: none;" class="clearfix" id="editor">
         <textarea style="width: 100%; height: 60%;"></textarea>
         <br />
         <br />
-        <a id="save" class="pull-right btn btn-primary">Save</a>
-        <a id="cancel" class="pull-left btn btn-danger">Cancel</a>
+        <button type="button" id="save" class="pull-right btn btn-primary">Save</button>
+        <button type="button" id="cancel" class="pull-left btn btn-danger">Cancel</button>
         <br />
         <br />
     </div>
     <div id="renderHere"></div>
 </body>
+
 </html>
