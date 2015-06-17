@@ -17,11 +17,9 @@
             };
         },
         componentDidMount: function(){
-          var component = this;
-          
           setInterval(function(){
-            component.setState({height: Math.random()*1000, width: Math.random()*1000})    
-          }, 500);
+            this.setState({height: Math.random()*1000, width: Math.random()*1000})    
+          }.bind(this), 500);
         },
         render: function() { 
           var myStyle = {

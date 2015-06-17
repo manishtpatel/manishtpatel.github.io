@@ -1,0 +1,154 @@
+<html>
+<head>
+    <link href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.4/css/bootstrap.min.css" type="text/css" rel="stylesheet"></link>
+    <link href="//cdnjs.cloudflare.com/ajax/libs/bootswatch/3.3.4/cosmo/bootstrap.min.css" type="text/css" rel="stylesheet"></link>
+
+    <style async>
+        body {
+            margin: 20px;
+        }
+    </style>
+
+    <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/URI.js/1.15.1/URI.min.js"></script>
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/markdown-it/4.2.2/markdown-it.min.js"></script>
+    <script src="//www.parsecdn.com/js/parse-1.4.2.min.js"></script>
+
+    <script>
+        var landingURI = new URI(window.location.href);
+        var keys = landingURI.query(true);
+        var uri, filename;
+
+        Parse.initialize(keys["pk1"], keys["pk2"]);
+        var CareerViewDocs = Parse.Object.extend(keys["pkc"]);
+        var careerViewDocs = new CareerViewDocs();
+        var homeFragment = keys["home"];
+        var headerFragment = keys["header"];
+
+        function getParse(key, callback) {
+            var query = new Parse.Query(CareerViewDocs);
+            query.equalTo("key", key).descending("updatedAt");
+
+            query.find({
+                success: function (results) {
+                    // ignore values not found we will add new one
+                    if (results.length > 0) callback(results[0].get('value'));
+                    else callback("");
+                },
+                error: function (error) {
+                    alert("Error: " + error.code + " " + error.message);
+                }
+            });
+        }
+
+        var saveParse = function (key, value, callback) {
+            careerViewDocs.save({ key: key, value: value }).then(function (object) {
+                callback(object);
+            });
+        }
+
+        var md = window.markdownit({
+            html: true,
+            linkify: false,
+            typographer: true,
+            xhtmlout: true
+        });
+
+        var render = function () {
+            uri = new URI(document.location.href);
+            filename = uri.fragment();
+
+            getParse(filename, function (data) {
+                $("#editor textarea").text(data);
+
+                $('#renderHere').html(md.render(data));
+            });
+        }
+
+        window.onpopstate = render;
+
+        $(function () {
+            render();
+
+            getParse(headerFragment, function (data) {
+                $("#header").html(md.render(data));
+            });
+
+            $("#renderHere").on("click", "a", function (e) {
+                e.stopImmediatePropagation();
+                e.preventDefault();
+
+                var currentURI = new URI(e.target.baseURI);
+                var targetURI = new URI(e.target.href);
+
+                // open outside link in another tab for all outside links
+                if (currentURI.hostname() != targetURI.hostname() && currentURI.directory() != targetURI.directory()) {
+                    var win = window.open(targetURI.href(), '_blank');
+                    win.focus();
+                    return;
+                }
+
+                var fileNamefragment = $(e.target).attr("href");
+
+                currentURI.fragment(fileNamefragment);
+
+                history.pushState({}, "", currentURI.href());
+
+                render();
+            });
+
+            $("#edit").on("click", function (e) {
+                e.stopImmediatePropagation();
+                e.preventDefault();
+
+                $("#editor").show();
+                $("#edit").hide();
+            });
+
+            $("#save").on("click", function (e) {
+                e.stopImmediatePropagation();
+                e.preventDefault();
+
+                saveParse(filename, $("#editor textarea").val(), function () {
+                    $("#editor").hide();
+                    $("#edit").show();
+                });
+            });
+
+            $('#editor textarea').bind('input propertychange', function () {
+                $('#renderHere').html(md.render(this.value));
+            });
+
+            $('#header').on('click', 'a', function (e) {
+                e.stopImmediatePropagation();
+                e.preventDefault();
+
+                $("#editor").hide();
+                history.pushState({}, "", uri.fragment(homeFragment));
+
+                render();
+            });
+        });
+    </script>
+</head>
+<body>
+    <div class="clearfix" style="margin-bottom: 10px;">
+        <div id="header" class="pull-left">
+        </div>
+        <div class="pull-right">
+            <a id="edit" style="margin-left: 30px;" class="btn btn-info">Edit This Page</a>
+        </div>
+    </div>
+
+
+    <div style="display: none;" id="editor">
+        <textarea style="width: 100%; height: 60%;"></textarea>
+        <br />
+        <br />
+        <a id="save" class="btn btn-primary">Save</a>
+        <br />
+        <br />
+    </div>
+    <div id="renderHere"></div>
+</body>
+</html>
