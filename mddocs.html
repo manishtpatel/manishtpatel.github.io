@@ -24,6 +24,7 @@
         var careerViewDocs = new CareerViewDocs();
         var homeFragment = keys["home"];
         var headerFragment = keys["header"];
+        var mdData;
 
         function getParse(key, callback) {
             var query = new Parse.Query(CareerViewDocs);
@@ -59,9 +60,11 @@
             filename = uri.fragment();
 
             getParse(filename, function (data) {
-                $("#editor textarea").text(data);
+                mdData = data;
 
-                $('#renderHere').html(md.render(data));
+                $("#editor textarea").text(mdData);
+
+                $('#renderHere').html(md.render(mdData));
             });
         }
 
@@ -124,10 +127,19 @@
                 e.preventDefault();
 
                 $("#editor").hide();
+                $("#edit").show();
+
                 history.pushState({}, "", uri.fragment(homeFragment));
 
                 render();
             });
+
+            $('#cancel').on('click', function () {
+                $("#editor").hide();
+                $("#edit").show();
+
+                $("#editor textarea").text(mdData);
+            })
         });
     </script>
 </head>
@@ -145,7 +157,8 @@
         <textarea style="width: 100%; height: 60%;"></textarea>
         <br />
         <br />
-        <a id="save" class="btn btn-primary">Save</a>
+        <a id="save" class="pull-right btn btn-primary">Save</a>
+        <a id="cancel" class="pull-left btn btn-danger">Cancel</a>
         <br />
         <br />
     </div>
