@@ -129,11 +129,6 @@
             e.stopImmediatePropagation();
             e.preventDefault();
 
-            if (this.editing) {
-                alert("can't let you redirect while editing, " + e.target.href);
-                return;
-            }
-
             var currentURI = new URI(window.location.href);
             var targetURI = new URI(e.currentTarget.href);
 
@@ -141,6 +136,11 @@
             if (currentURI.hostname() != targetURI.hostname() || currentURI.directory() != targetURI.directory()) {
                 var win = window.open(targetURI.href(), '_blank');
                 win.focus();
+                return;
+            }
+
+            if (this.editing) {
+                alert("can't let you redirect while editing, " + e.target.href);
                 return;
             }
 
@@ -206,6 +206,7 @@
         <br />
         <button type="button" id="save" class="pull-right btn btn-primary">Save</button>
         <button type="button" id="cancel" class="pull-left btn btn-danger">Cancel</button>
+        <a style="margin-left: 10px;" class="btn btn-info pull-left" href="https://markdown-it.github.io">Markdown Help</a>
         <br />
         <br />
     </div>
