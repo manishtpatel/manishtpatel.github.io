@@ -19,13 +19,19 @@
             <button type="button" id="edit" style="margin-left: 30px;" class="btn btn-info">Edit This Page</button>
         </div>
     </div>
-    <div style="display: none;" class="clearfix" id="editor">
-        <textarea style="width: 100%; height: 60%;" rows="20"></textarea>
-        <br />
-        <br />
-        <button type="button" id="save" class="pull-right btn btn-primary">Save</button>
-        <button type="button" id="cancel" class="pull-left btn btn-danger">Cancel</button>
-        <a style="margin-left: 10px;" class="btn btn-info pull-left" href="https://markdown-it.github.io">Markdown Help</a>
+    <div style="display: none;" id="editor">
+        <div class="clearfix">
+            <textarea style="width: 100%; height: 60%;" rows="20"></textarea>
+            <br />
+            <br />
+            <button type="button" id="save" class="pull-right btn btn-primary">Save</button>
+            <div class="pull-left">
+                <button type="button" id="cancel" class="btn btn-danger">Cancel</button>
+                <a style="margin-left: 10px;" class="btn btn-info" href="https://markdown-it.github.io">Markdown Help</a>
+            </div>
+        </div>
+        <br/>
+        <em>Link to page using #key</em>
         <br />
         <br />
     </div>
@@ -119,12 +125,12 @@
                 $('#renderHere').html(window.md.render(this.value));
             });
 
-            if (this.props.supportspopstate) {
-                // trigger fragmentChanged on popstate
-                window.onpopstate = this.fragmentChanged.bind(this);
-            } else {
-                window.onhashchange = this.fragmentChanged.bind(this);
-            }
+            // if (this.props.supportspopstate) {
+            //     // trigger fragmentChanged on popstate
+            //     window.onpopstate = this.fragmentChanged.bind(this);
+            // } else {
+            window.onhashchange = this.fragmentChanged.bind(this);
+            // }
         }
 
         // Data Changed handler
@@ -140,53 +146,48 @@
         this.fragmentChanged = function() {
             this.updating(true);
 
-            // get fragement
-            this.fragment = (new URI(document.location.href)).fragment();
+            var fragment = document.location.hash.replace('#', '');
 
             // if no fragment then either redirecting to home or landing to home
-            if (!this.fragment) this.fragment = this.props.homeDataKey;
+            if (!fragment) fragment = this.props.homeDataKey;
 
             // get value and render
-            this.parse.getParse(this.fragment, function(found, data) {
+            this.parse.getParse(fragment, function(found, data) {
                 if (!found) {
                     data = "# Your new page is ready, press 'edit this page'";
                 }
 
                 this.dataChanged(data);
-
                 this.updating(false);
             }.bind(this));
         }
 
         this.handleLinkClick = function(e) {
-            // e.stopImmediatePropagation();
-            // e.preventDefault();
-
-            var currentURI = new URI(window.location.href);
-            var targetURI = new URI(e.currentTarget.href);
+            console.log(e)
 
             // open outside link in another tab for all outside links
-            if (currentURI.hostname() != targetURI.hostname() || currentURI.directory() != targetURI.directory()) {
-                var win = window.open(targetURI.href(), '_blank');
+            // all hash links are another page in the app
+            if ((URI(window.location.href)).fragment("").normalize().toString() != (new URI(e.currentTarget.href)).fragment("").normalize().toString()) {
+                var win = window.open(e.currentTarget.href, '_blank');
                 win.focus();
                 return;
             }
 
             if (this.editing) {
-                alert("can't let you redirect while editing, " + e.target.href);
+                alert("can't let you redirect while editing, " + e.currentTarget.href);
                 return;
             }
 
-            var fileNamefragment = $(e.currentTarget).attr("href");
-            currentURI.fragment(fileNamefragment);
+            // var fileNamefragment = $(e.currentTarget).attr("href");
+            // currentURI.fragment(fileNamefragment);
 
-            if (this.props.supportspopstate) {
-                history.pushState({}, "", currentURI.href());
+            // if (this.props.supportspopstate) {
+            //     history.pushState(null, null, e.currentTarget.hash);
 
-                this.fragmentChanged();
-            } else {
-                window.location.hash = fileNamefragment;
-            }
+            //     this.fragmentChanged();
+            // } else {
+            window.location.hash = e.currentTarget.hash;
+            // }
         }
 
         this.enterEditMode = function(entering) {
