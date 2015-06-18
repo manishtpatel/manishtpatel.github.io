@@ -11,6 +11,7 @@
 </head>
 
 <body style="margin: 20px;">
+    <div id="updating" class="label label-warning" style="position:fixed; z-index:99; top:0; left:20; right:20; padding-left:40px; padding-right:40px;">Working....</div>
     <div class="clearfix" style="margin-bottom: 10px;">
         <div id="header" class="pull-left">
         </div>
@@ -81,6 +82,14 @@
         this.props = props; // app props
         this.parse = parseService(this.props); // parse.com services
 
+        var _$updating = $('#updating');
+
+        // show progress
+        this.updating = function(show) {
+            if (show) _$updating.show()
+            else _$updating.hide()
+        };
+
         this.constructor = function() {
             // init fragment on page load
             this.fragmentChanged();
@@ -129,6 +138,8 @@
         }
 
         this.fragmentChanged = function() {
+            this.updating(true);
+
             // get fragement
             this.fragment = (new URI(document.location.href)).fragment();
 
@@ -142,12 +153,14 @@
                 }
 
                 this.dataChanged(data);
+
+                this.updating(false);
             }.bind(this));
         }
 
         this.handleLinkClick = function(e) {
-            e.stopImmediatePropagation();
-            e.preventDefault();
+            // e.stopImmediatePropagation();
+            // e.preventDefault();
 
             var currentURI = new URI(window.location.href);
             var targetURI = new URI(e.currentTarget.href);
@@ -169,7 +182,7 @@
 
             if (this.props.supportspopstate) {
                 history.pushState({}, "", currentURI.href());
-    
+
                 this.fragmentChanged();
             } else {
                 window.location.hash = fileNamefragment;
@@ -191,12 +204,17 @@
         this.cancelSave = function(cancelling) {
             if (cancelling) {
                 // reset text are text
-                $("#editor textarea").val(this.data);
+                // $("#editor textarea").val(this.data);
                 this.enterEditMode(false);
                 this.fragmentChanged();
             } else {
+                this.updating(true);
+
                 // save changes
-                this.parse.saveParse(this.fragment, $("#editor textarea").val(), this.enterEditMode.bind(this, false));
+                this.parse.saveParse(this.fragment, $("#editor textarea").val(), function() {
+                    this.enterEditMode(false);
+                    this.updating(false);
+                }.bind(this));
             }
         }
 
