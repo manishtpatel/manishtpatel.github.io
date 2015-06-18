@@ -31,13 +31,16 @@
     <script>
     var queryStrings = (new URI(window.location.href)).query(true);
 
+    alert('onpopstate' in window.document.body)
+
     // App Data
     var props = {
         homeDataKey: queryStrings["homedatakey"], // home data key
         headerDataKey: queryStrings["headerdatakey"], // header data key
         parseAppId: queryStrings["parseappid"], // your parse AppId
         parseJavascriptKey: queryStrings["parsejavascriptkey"], // your parse Javascript Key
-        parseClass: queryStrings["parseclass"]
+        parseClass: queryStrings["parseclass"],
+        supportspopstate: 'onpopstate' in window.document.body // check if browser supports popstate
     };
 
     var parseService = function(props) {
@@ -110,10 +113,12 @@
                 $('#renderHere').html(window.md.render(this.value));
             });
 
-            // trigger fragmentChanged on popstate
-            window.onpopstate = function() {
-                this.fragmentChanged()
-            }.bind(this);
+            if (this.props.supportspopstate) {
+                // trigger fragmentChanged on popstate
+                window.onpopstate = this.fragmentChanged.bind(this);
+            } else {
+                window.onhashchange = this.fragmentChanged.bind(this);
+            }
         }
 
         // Data Changed handler
@@ -164,9 +169,14 @@
 
             var fileNamefragment = $(e.currentTarget).attr("href");
             currentURI.fragment(fileNamefragment);
-            history.pushState({}, "", currentURI.href());
 
-            this.fragmentChanged();
+            if (this.props.supportspopstate) {
+                history.pushState({}, "", currentURI.href());
+    
+                this.fragmentChanged();
+            } else {
+                window.location.hash = '#' + fileNamefragment;
+            }
         }
 
         this.enterEditMode = function(entering) {
