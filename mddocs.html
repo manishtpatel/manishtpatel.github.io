@@ -31,8 +31,6 @@
     <script>
     var queryStrings = (new URI(window.location.href)).query(true);
 
-    alert('onpopstate' in window.document.body)
-
     // App Data
     var props = {
         homeDataKey: queryStrings["homedatakey"], // home data key
@@ -173,7 +171,7 @@
     
                 this.fragmentChanged();
             } else {
-                window.location.hash = '#' + fileNamefragment;
+                window.location.hash = fileNamefragment;
             }
         }
 
