@@ -55,8 +55,6 @@
 
                 query.find({
                     success: function(results) {
-                        console.log(results.length)
-                        console.log(results[0].get('value'))
                         callback(results.length > 0, (results.length > 0) ? results[0].get('value') : null);
                     },
                     error: function(error) {
