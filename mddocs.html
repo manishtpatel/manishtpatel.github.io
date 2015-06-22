@@ -147,6 +147,8 @@
             this.updating(true);
 
             var fragment = document.location.hash.replace('#', '');
+
+            // save current fragment
             this.fragment = fragment;
 
             // if no fragment then either redirecting to home or landing to home
