@@ -148,12 +148,12 @@
 
             var fragment = document.location.hash.replace('#', '');
 
-            // save current fragment
-            this.fragment = fragment;
-
             // if no fragment then either redirecting to home or landing to home
             if (!fragment) fragment = this.props.homeDataKey;
 
+            // save current fragment
+            this.fragment = fragment;
+            
             // get value and render
             this.parse.getParse(fragment, function(found, data) {
                 if (!found) {
